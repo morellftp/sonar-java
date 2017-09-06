@@ -400,6 +400,22 @@ public class JavaCheckVerifierTest {
         + "7: flow@f {MESSAGE=msg2}");
   }
 
+  @Test
+  public void verify_two_flows_with_same_lines() {
+    FakeVisitor fakeVisitor = new FakeVisitor()
+      .issueWithFlow(4, "error", 5, 11, 15)
+      .flow()
+        .flowItem(4, "line4")
+        .flowItem(5, "f1")
+        .flowItem(6, "line6")
+      .flow()
+        .flowItem(4, "line4")
+        .flowItem(5, "f2")
+        .flowItem(6, "line6")
+      .add();
+    JavaCheckVerifier.verify("src/test/files/JavaCheckVerifierFlowsWithSameLines.java", fakeVisitor);
+  }
+
   private static class FakeVisitor extends IssuableSubscriptionVisitor implements IssueWithFlowBuilder {
 
     ListMultimap<Integer, String> issues = LinkedListMultimap.create();

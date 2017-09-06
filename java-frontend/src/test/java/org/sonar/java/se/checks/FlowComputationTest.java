@@ -142,4 +142,8 @@ public class FlowComputationTest {
     JavaCheckVerifier.verify("src/test/files/se/MethodInvocationWithoutFlows.java", new NullDereferenceCheck(), new ConditionalUnreachableCodeCheck(), new DivisionByZeroCheck());
   }
 
+  @Test
+  public void test_exception_flows() throws Exception {
+    JavaCheckVerifier.verify("src/test/files/se/ExceptionFlows.java", new NullDereferenceCheck());
+  }
 }

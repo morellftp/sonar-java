@@ -25,6 +25,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.Sets;
@@ -48,6 +49,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -199,13 +201,33 @@ class Expectations {
 
 
   Optional<String> containFlow(List<AnalyzerMessage> flow) {
-    if (flowLines == null) {
-      flowLines = computeFlowLines();
+    List<Map.Entry<String, SortedSet<FlowComment>>> sameFlows = Multimaps.asMap(flows).entrySet().stream()
+      .filter(e -> sameFlow(e.getValue(), flow))
+      .collect(toList());
+    Preconditions.checkState(sameFlows.size() < 2);
+    if (sameFlows.isEmpty()) {
+      return Optional.empty();
+    } else {
+      String flowId = sameFlows.get(0).getKey();
+      seenFlowIds.add(flowId);
+      return Optional.of(flowId);
     }
-    ImmutableList<Integer> actualLines = flowToLines(flow, AnalyzerMessage::getLine);
-    Optional<String> flowId = Optional.ofNullable(flowLines.get(actualLines));
-    flowId.ifPresent(id -> seenFlowIds.add(id));
-    return flowId;
+  }
+
+  private boolean sameFlow(SortedSet<FlowComment> expectedFlow, List<AnalyzerMessage> actualFlow) {
+    Iterator<FlowComment> it1 = expectedFlow.iterator();
+    Iterator<AnalyzerMessage> it2 = actualFlow.iterator();
+    while (it1.hasNext() && it2.hasNext()) {
+      FlowComment expected = it1.next();
+      AnalyzerMessage actual = it2.next();
+      if (!Objects.equals(expected.line, actual.getLine().intValue())) {
+        return false;
+      }
+      if (expected.message() != null && !expected.message().equals(actual.getMessage())) {
+        return false;
+      }
+    }
+    return it2.hasNext() == it2.hasNext();
   }
 
   Set<String> unseenFlowIds() {

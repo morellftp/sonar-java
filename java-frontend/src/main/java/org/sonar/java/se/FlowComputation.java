@@ -37,11 +37,13 @@ import org.sonar.java.se.constraint.ConstraintsByDomain;
 import org.sonar.java.se.constraint.ObjectConstraint;
 import org.sonar.java.se.symbolicvalues.BinarySymbolicValue;
 import org.sonar.java.se.symbolicvalues.SymbolicValue;
+import org.sonar.java.se.xproc.ExceptionalYield;
 import org.sonar.java.se.xproc.HappyPathYield;
 import org.sonar.java.se.xproc.MethodBehavior;
 import org.sonar.java.se.xproc.MethodYield;
 import org.sonar.plugins.java.api.JavaFileScannerContext;
 import org.sonar.plugins.java.api.semantic.Symbol;
+import org.sonar.plugins.java.api.semantic.Type;
 import org.sonar.plugins.java.api.tree.Arguments;
 import org.sonar.plugins.java.api.tree.AssignmentExpressionTree;
 import org.sonar.plugins.java.api.tree.ConditionalExpressionTree;
@@ -298,6 +300,15 @@ public class FlowComputation {
       Set<LearnedConstraint> learnedConstraints = learnedConstraints(edge);
       List<JavaFileScannerContext.Location> lcFlow = flowFromLearnedConstraints(edge, filterRedundantObjectDomain(learnedConstraints));
       flowBuilder.addAll(lcFlow);
+      if (isMethodInvocationNode(edge.parent) && !edge.yields().isEmpty()) {
+        for (MethodYield methodYield : edge.yields()) {
+          if (methodYield instanceof ExceptionalYield) {
+            Type type = ((ExceptionalYield) methodYield).exceptionType();
+            String msg = type == null ? "Exception is thrown." : ("'" + type.name() + "' is thrown.");
+            flowBuilder.add(location(edge.parent, msg));
+          }
+        }
+      }
 
       boolean endOfPath = visitedAllParents(edge) || shouldTerminate(learnedConstraints);
 
