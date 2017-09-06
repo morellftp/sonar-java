@@ -408,8 +408,14 @@ public class ExplodedGraphWalker {
           break;
         case THROW_STATEMENT:
           ProgramState.Pop unstack = programState.unstackValue(1);
-          // we don't use the SV related to the expression
-          programState = unstack.state.stackValue(constraintManager.createExceptionalSymbolicValue(((ThrowStatementTree) terminator).expression().symbolType()));
+          SymbolicValue sv = unstack.values.get(0);
+          if (sv.wrappedValue() instanceof SymbolicValue.ExceptionalSymbolicValue) {
+            // retrowing the exception from a catch block
+            sv = sv.wrappedValue();
+          } else {
+            sv = constraintManager.createExceptionalSymbolicValue(((ThrowStatementTree) terminator).expression().symbolType());
+          }
+          programState = unstack.state.stackValue(sv);
           programState.storeExitValue();
           break;
         default:
@@ -793,7 +799,14 @@ public class ExplodedGraphWalker {
       if (terminator != null && terminator.is(Tree.Kind.FOR_EACH_STATEMENT)) {
         sv = constraintManager.createSymbolicValue(variableTree);
       } else if (variableTree.parent().is(Tree.Kind.CATCH)) {
-        sv = getCaughtException(variableTree.symbol().type());
+        SymbolicValue thrownSV = getCaughtException(variableTree.symbol().type());
+        // replace the exceptional sv by a sv wrapping it, because the exception will be used as a variable within the block
+        sv = new SymbolicValue() {
+          @Override
+          public SymbolicValue wrappedValue() {
+            return thrownSV;
+          }
+        };
         programState = programState.addConstraint(sv, ObjectConstraint.NOT_NULL);
       }
       if (sv != null) {
